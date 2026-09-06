@@ -1,0 +1,250 @@
+{
+  "name": "Phase 2, Project #2: Content Repurposing Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "repurpose-content",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "cf75cb0d-8e6d-40ec-8418-87f507332da9",
+      "name": "Webhook",
+      "webhookId": "2969de97-d3fd-48c3-bbd6-40db48865fce"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.body.url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "be6cfd3c-5bfd-468e-99fb-e45337fb9477",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "cssSelector": "body"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "c5126702-c6d2-4dac-a5be-f6db1a57fd84",
+      "name": "HTML"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=   {{ JSON.stringify($json.requestBody) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        0
+      ],
+      "id": "d67e0f6b-ae49-43be-9d28-9b01296162a8",
+      "name": "HTTP Request1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "onj9YrnIElgh8R1i",
+          "name": "Gemini API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#news-content-repurposed",
+          "mode": "name"
+        },
+        "text": "=:memo: *Content Repurposed!*\n━━━━━━━━━━━━━━━━━━━━━\n\n*📄 Summary*\n{{ $json.summary }}\n\n*🐦 Twitter/X*\n{{ $json.twitter }}\n\n*💼 LinkedIn*\n{{ $json.linkedin }}\n\n━━━━━━━━━━━━━━━━━━━━━",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        1424,
+        160
+      ],
+      "id": "7092ca7d-1e6c-407f-8d99-db39c48c9dcf",
+      "name": "Send a message - Slack Channel",
+      "webhookId": "22227f60-8270-4e7b-968c-5fd67ce2b217",
+      "credentials": {
+        "slackApi": {
+          "id": "7o87j9duGSfUh5I8",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "tres.enrico@gmail.com",
+        "subject": "Content Repurposed: New Post Ready",
+        "message": "=   <h3>📝 Content Repurposed!</h3>     <p><b>Summary:</b><br>    {{ $json.summary }}</p>     <p><b>Twitter/X:</b><br>    {{ $json.twitter }}</p>     <p><b>LinkedIn:</b><br>    {{ $json.linkedin }}</p>     <hr>    <p><i>Generated automatically with n8n + Gemini</i></p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1408,
+        -64
+      ],
+      "id": "76b7c209-3554-4e26-8e88-6b5f9e068744",
+      "name": "Send a message - Gmail",
+      "webhookId": "5b9f87b0-ab44-4624-916a-094111a857a6",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "7HWb09Lf2aGh8c1d",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputJson = $input.first().json;\nconst articleText = inputJson.data || inputJson[''] || Object.values(inputJson)[0];\n\nconst prompt = `You are a social media content assistant. Given the article text below, do three things: 1) Write a 2-sentence summary. 2) Write a Twitter/X caption (under 280 characters, engaging, with 1-2 relevant hashtags). 3) Write a LinkedIn caption (professional tone, 3-4 sentences, no hashtags). Respond ONLY with valid JSON in this exact format, no markdown, no extra text: {\"summary\": \"...\", \"twitter\": \"...\", \"linkedin\": \"...\"}\n\nArticle text: ${articleText}`;\n\nconst requestBody = {\n  contents: [\n    { parts: [ { text: prompt } ] }\n  ]\n};\n\nreturn [ { json: { requestBody: requestBody } } ];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "25fb99d5-24a1-4d9c-8624-d4c0b1983734",
+      "name": "Code in JavaScript - Get Content"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.candidates[0].content.parts[0].text;\nconst cleaned = raw.replace(/```json|```/g, '').trim();\nconst parsed = JSON.parse(cleaned);\n\nreturn [\n  { json: { summary: parsed.summary, twitter: parsed.twitter, linkedin: parsed.linkedin } }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "cc62772a-9135-44f6-813e-0d937cb74f22",
+      "name": "Code in JavaScript - Summary"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript - Get Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript - Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message - Slack Channel": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript - Get Content": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript - Summary": {
+      "main": [
+        [
+          {
+            "node": "Send a message - Slack Channel",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a message - Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a8ab48e7-16a8-4b61-aa4b-7f9fc4dde32b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9323740537159b5c5149c211d21621dce4ce36a3ad9059d023eb94c31d5fd377"
+  },
+  "nodeGroups": [],
+  "id": "x6lOcvvWOa7PN0uI",
+  "tags": []
+}
