@@ -5,7 +5,7 @@ generate a summary plus ready-to-post social media captions for Twitter/X
 and LinkedIn — delivered instantly via Email and Slack.
 
 ## Demo
-[Link to your Loom video here]
+https://www.loom.com/share/80d481096722478280eec4ae1568a323
 
 ## How it works
 1. **Webhook** receives a URL to an article
